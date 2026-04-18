@@ -422,7 +422,7 @@ const LandingPage = ({ onEnter }) => {
             IoT · MQTT · Real-Time 3D
           </div>
           <h1 className="text-5xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-300 to-emerald-400 leading-tight">
-            Environmental<br />Digital Twin
+            TwinSense
           </h1>
           <p className="text-slate-400 text-base max-w-xl leading-relaxed">
             A real-time digital replica of any physical system — sensor data streams live into an interactive 3D model,

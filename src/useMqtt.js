@@ -1,56 +1,86 @@
-// Replace useMqtt.js entirely with this
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 const THINGSPEAK_CHANNEL = import.meta.env.VITE_THINGSPEAK_CHANNEL;
 const THINGSPEAK_API_KEY = import.meta.env.VITE_THINGSPEAK_API_KEY;
-const POLL_INTERVAL = 20000; // every 20s matches ESP32 publish rate
+const POLL_INTERVAL      = 20000;
 
-const fetchThingSpeak = async () => {
-  const url = `https://api.thingspeak.com/channels/${THINGSPEAK_CHANNEL}/feeds/last.json?api_key=${THINGSPEAK_API_KEY}`;
-  const res  = await fetch(url);
-  const json = await res.json();
+/* ── Pressure: Open-Meteo (free, no key) — Chennai ── */
+const fetchPressure = async () => {
+  try {
+    const res  = await fetch('https://api.open-meteo.com/v1/forecast?latitude=13.0827&longitude=80.2707&current=surface_pressure');
+    const json = await res.json();
+    const p = json?.current?.surface_pressure;
+    if (p) return parseFloat(p.toFixed(2));
+  } catch (e) {
+    console.warn('Open-Meteo failed:', e);
+  }
+  return 1013.25;
+};
 
-  // ThingSpeak fields map to what ESP32 sends:
-  // field1 = temp, field2 = hum, field3 = co2, field4 = co
+/* ── Noise: CO₂ + Temp occupancy model ── */
+const deriveNoise = (co2ppm, temp) => {
+  const noise = (co2ppm / 1000) * 300 + (temp / 50) * 200;
+  return Math.round(Math.min(1024, Math.max(0, noise)));
+};
+
+/* ── Flow Rate: temperature delta model ── */
+const deriveFlow = (temp) => {
+  const flow = Math.max(0, 10 - (temp - 20) * 0.3);
+  return parseFloat(flow.toFixed(1));
+};
+
+/* ── MQ-135 raw ADC → CO₂ ppm ── */
+const rawToCO2 = (raw) => {
+  if (!raw || raw <= 0) return 400;
+  const vout = (raw / 4095.0) * 3.3;
+  return Math.round(116.6020682 * Math.pow(vout / 0.76, -2.769034857));
+};
+
+/* ── Main fetch: ThingSpeak + Open-Meteo in parallel ── */
+const fetchAll = async () => {
+  const tsUrl = `https://api.thingspeak.com/channels/${THINGSPEAK_CHANNEL}/feeds/last.json?api_key=${THINGSPEAK_API_KEY}`;
+
+  const [tsRes, pressure] = await Promise.all([
+    fetch(tsUrl).then(r => r.json()),
+    fetchPressure(),
+  ]);
+
+  const temp     = parseFloat(tsRes.field1);
+  const humidity = parseFloat(tsRes.field2);
+  const co2ppm   = rawToCO2(parseFloat(tsRes.field3));
+  const co       = parseFloat(tsRes.field4);
+
   return {
-    node: 'thermal_plant_01',
-    timestamp: json.created_at,
-    dht11: {
-      temp:     parseFloat(json.field1),
-      humidity: parseFloat(json.field2),
-    },
-    bmp180:  { pressure: 1013.25 },
-    mpu6050: { ax: 0, ay: 0, az: 9.8 },
-    noise: 500,
-    flow:  2.5,
-    co2: parseFloat(json.field3),
-    co:  parseFloat(json.field4),
+    node:      'thermal_plant_01',
+    timestamp: tsRes.created_at,
+    dht11:     { temp, humidity },
+    bmp180:    { pressure },
+    co2:       co2ppm,
+    co,
+    noise:     deriveNoise(co2ppm, temp),
+    flow:      deriveFlow(temp),
   };
 };
 
 const useMqtt = () => {
   const [data, setData]           = useState(null);
   const [connected, setConnected] = useState(false);
-  const simTickRef                = useRef(0);
 
   useEffect(() => {
-    // Try ThingSpeak immediately on mount
-    const fetchAndSet = async () => {
+    const run = async () => {
       try {
-        const live = await fetchThingSpeak();
+        const live = await fetchAll();
         setData(live);
         setConnected(true);
-        console.log('✅ ThingSpeak live data:', live);
+        console.log('✅ TwinSense data:', live);
       } catch (e) {
-        console.warn('ThingSpeak fetch failed, using simulation:', e);
+        console.warn('Fetch failed:', e);
         setConnected(false);
       }
     };
 
-    fetchAndSet(); // immediate first fetch
-
-    const interval = setInterval(fetchAndSet, POLL_INTERVAL);
-
+    run();
+    const interval = setInterval(run, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, []);
 

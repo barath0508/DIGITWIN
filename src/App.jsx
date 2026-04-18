@@ -54,9 +54,30 @@ function App() {
   };
 
   const getCO2Status = data ? getStatus(data.co2, 800, 1000) : 'normal';
-  const getCOStatus = data ? getStatus(data.co, 20, 50) : 'normal';
-  const getNoiseStatus = data ? getStatus(data.noise, 600, 700) : 'normal';
-  const getTempStatus = data ? getStatus(data.dht11.temp, 30, 35) : 'normal';
+  const getCOStatus = data ? getStatus(data.co, 9, 35) : 'normal';
+  const getNoiseStatus = data ? getStatus(data.noise, 500, 700) : 'normal';
+  const getTempStatus = data ? getStatus(data.dht11.temp, 28, 32) : 'normal';
+
+  const getHumidityStatus = (v) => {
+    if (!v) return 'normal';
+    if (v < 30 || v > 70) return 'danger';
+    if (v < 40 || v > 60) return 'warning';
+    return 'success';
+  };
+
+  const getPressureStatus = (v) => {
+    if (!v) return 'normal';
+    if (v < 980 || v > 1040) return 'danger';
+    if (v < 1000 || v > 1020) return 'warning';
+    return 'success';
+  };
+
+  const getFlowStatus = (v) => {
+    if (!v) return 'normal';
+    if (v < 0.5 || v > 10) return 'danger';
+    if (v < 1 || v > 8) return 'warning';
+    return 'success';
+  };
 
   if (showLanding) return <LandingPage onEnter={() => setShowLanding(false)} />;
 
@@ -69,7 +90,7 @@ function App() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 tracking-tight">
-              Environmental Digital Twin Dashboard
+              TwinSense
             </h1>
             <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
           </div>
@@ -131,23 +152,23 @@ function App() {
             unit="°C" icon={Thermometer}
             percentage={data ? (data.dht11.temp / 50) * 100 : 0}
             status={getTempStatus}
-            desc="Ambient air temp across floors. Above 30 °C triggers HVAC cooling override."
+            desc="Safe < 28°C · Warning 28–32°C · Danger > 32°C. Above 30°C triggers HVAC cooling override."
           />
           <SensorCard
             title="Humidity"
             value={data?.dht11?.humidity?.toFixed(1) || '--'}
             unit="%" icon={Waves}
             percentage={data?.dht11?.humidity || 0}
-            status="success"
-            desc="Relative humidity. Optimal 40–60 % for occupant comfort and equipment safety."
+            status={getHumidityStatus(data?.dht11?.humidity)}
+            desc="Safe 40–60% · Warning 30–40% or 60–70% · Danger < 30% or > 70%."
           />
           <SensorCard
-            title="Barometric Pressure"
+            title="Pressure"
             value={data?.bmp180?.pressure?.toFixed(2) || '--'}
             unit="hPa" icon={Gauge}
             percentage={data ? ((data.bmp180.pressure - 900) / 200) * 100 : 0}
-            status="normal"
-            desc="Floor-level pressure differential used to balance ventilation across zones."
+            status={getPressureStatus(data?.bmp180?.pressure)}
+            desc="Safe 1000–1020 hPa · Warning 980–1000 or 1020–1040 · Danger < 980 or > 1040 hPa."
           />
           <SensorCard
             title="Noise Level"
@@ -155,15 +176,15 @@ function App() {
             unit="mV" icon={Activity}
             percentage={data ? (data.noise / 1024) * 100 : 0}
             status={getNoiseStatus}
-            desc="Acoustic output. Spikes above 700 mV indicate machinery or crowd noise events."
+            desc="Safe 0–500 mV · Warning 500–700 mV · Danger > 700 mV."
           />
           <SensorCard
             title="Flow Rate"
             value={data?.flow?.toFixed(1) || '--'}
             unit="L/min" icon={Wind}
             percentage={data ? (data.flow / 10) * 100 : 0}
-            status="normal"
-            desc="HVAC air-flow and plumbing water-flow. Low readings flag blockages or pump faults."
+            status={getFlowStatus(data?.flow)}
+            desc="Safe 1–8 L/min · Warning 0.5–1 or 8–10 L/min · Danger < 0.5 or > 10 L/min."
           />
           <SensorCard
             title="CO₂ Level"
@@ -171,7 +192,7 @@ function App() {
             unit="ppm" icon={AlertTriangle}
             percentage={data ? (data.co2 / 2000) * 100 : 0}
             status={getCO2Status}
-            desc="Above 800 ppm ventilation increases; above 1000 ppm triggers occupancy alert."
+            desc="Safe 400–800 ppm · Warning 800–1000 ppm · Danger > 1000 ppm — occupancy alert."
           />
           <SensorCard
             title="CO Level"
@@ -179,7 +200,7 @@ function App() {
             unit="ppm" icon={AlertTriangle}
             percentage={data ? (data.co / 100) * 100 : 0}
             status={getCOStatus}
-            desc="Carbon monoxide from combustion. Above 50 ppm triggers immediate evacuation."
+            desc="Safe 0–9 ppm · Warning 9–35 ppm · Danger > 35 ppm — immediate evacuation."
           />
         </div>
       </div>
