@@ -62,9 +62,12 @@ const fetchAll = async () => {
   };
 };
 
+const MAX_HISTORY = 50;
+
 const useMqtt = () => {
   const [data, setData]           = useState(null);
   const [connected, setConnected] = useState(false);
+  const [dataHistory, setDataHistory] = useState([]);
 
   useEffect(() => {
     const run = async () => {
@@ -72,6 +75,7 @@ const useMqtt = () => {
         const live = await fetchAll();
         setData(live);
         setConnected(true);
+        setDataHistory(prev => [...prev.slice(-(MAX_HISTORY - 1)), live]);
         console.log('✅ TwinSense data:', live);
       } catch (e) {
         console.warn('Fetch failed:', e);
@@ -84,7 +88,7 @@ const useMqtt = () => {
     return () => clearInterval(interval);
   }, []);
 
-  return { data, connected };
+  return { data, connected, dataHistory };
 };
 
 export default useMqtt;

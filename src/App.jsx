@@ -5,9 +5,10 @@ import SensorCard from './components/SensorCard';
 import ThreeScene from './components/ThreeScene';
 import LandingPage from './components/LandingPage';
 import DashboardFX from './components/DashboardFX';
+import GeminiAI from './components/GeminiAI';
 
 function App() {
-  const { data, connected } = useMqtt();
+  const { data, connected, dataHistory } = useMqtt();
   const [showLanding, setShowLanding] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const modelRef = useRef(null);
@@ -204,6 +205,8 @@ function App() {
           />
         </div>
       </div>
+
+      <GeminiAI data={data} dataHistory={dataHistory} />
 
       {/* Footer */}
       <footer className="px-4 md:px-8 pb-6 flex justify-between items-center text-xs text-slate-500 font-medium z-20 relative">
