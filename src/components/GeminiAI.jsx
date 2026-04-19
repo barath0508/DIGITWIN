@@ -3,7 +3,7 @@ import { MessageCircle, X, Send, Bot, AlertTriangle, Loader2, ChevronDown } from
 import { motion, AnimatePresence } from 'framer-motion';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
 
 const SYSTEM_PROMPT = `You are TwinSense AI, an intelligent building monitoring assistant for a smart building digital twin system.
 You analyze real-time sensor data and alert about anomalies. Sensors monitored:
